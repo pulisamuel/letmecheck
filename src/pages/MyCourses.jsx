@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
+import { extractTextFromCertificate, verifyCertificateContent } from '../utils/certVerifier'
 
 // Course URLs (same as Courses.jsx)
 const COURSE_URLS = {
@@ -49,7 +50,7 @@ const COURSE_URLS = {
   da4: 'https://www.coursera.org/learn/excel-data-analysis',
 }
 
-// Strict certificate validation — magic bytes + ALL course keywords must match
+// Strict certificate validation — magic bytes + course match
 async function verifyCertificate(file, course) {
   const fname = file.name.toLowerCase().replace(/[-_.\s]/g, ' ')
   const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.name)
@@ -96,6 +97,7 @@ function CourseProgressCard({ course, progress, onVerify }) {
   const [certFile, setCertFile] = useState(null)
   const [certPreview, setCertPreview] = useState(null)
   const [verifying, setVerifying] = useState(false)
+  const [verifyStep, setVerifyStep] = useState('') // scanning progress label
   const [verifyResult, setVerifyResult] = useState(null)
   const [dragOver, setDragOver] = useState(false)
 
@@ -133,31 +135,54 @@ function CourseProgressCard({ course, progress, onVerify }) {
     if (!certFile) return
     setVerifying(true)
     setVerifyResult(null)
-    const result = await verifyCertificate(certFile, course)
+
+    // Step 1 — check file type and magic bytes
+    setVerifyStep('Checking file type...')
+    const isImage = certFile.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(certFile.name)
+    const isPDF   = certFile.type === 'application/pdf' || certFile.name.toLowerCase().endsWith('.pdf')
+    if (!isImage && !isPDF) {
+      setVerifyResult({ success: false, message: '❌ Invalid file type. Only JPG, PNG, or PDF certificates are accepted.' })
+      setVerifying(false); return
+    }
+    if (certFile.size < 5000) {
+      setVerifyResult({ success: false, message: '❌ File too small (min 5 KB). This does not look like a real certificate.' })
+      setVerifying(false); return
+    }
+    if (certFile.size > 25 * 1024 * 1024) {
+      setVerifyResult({ success: false, message: '❌ File too large (max 25 MB).' })
+      setVerifying(false); return
+    }
+
+    // Step 2 — magic bytes check
+    setVerifyStep('Validating file integrity...')
+    try {
+      const buf = await certFile.slice(0, 8).arrayBuffer()
+      const b = new Uint8Array(buf)
+      const ok = (b[0]===0x25&&b[1]===0x50&&b[2]===0x44&&b[3]===0x46) || // PDF
+                 (b[0]===0xFF&&b[1]===0xD8) ||                              // JPG
+                 (b[0]===0x89&&b[1]===0x50&&b[2]===0x4E&&b[3]===0x47) ||  // PNG
+                 (b[0]===0x52&&b[1]===0x49&&b[2]===0x46&&b[3]===0x46)     // WebP
+      if (!ok) {
+        setVerifyResult({ success: false, message: '❌ This file is not a real image or PDF. Please upload the actual certificate downloaded from the course platform.' })
+        setVerifying(false); return
+      }
+    } catch { /* skip */ }
+
+    // Step 3 — extract text from image/PDF content
+    setVerifyStep(isImage ? 'Reading certificate image (OCR)...' : 'Reading certificate PDF...')
+    const text = await extractTextFromCertificate(certFile)
+
+    // Step 4 — verify content
+    setVerifyStep('Verifying certificate content...')
+    const result = verifyCertificateContent(text, course)
+
     if (result.valid) {
-      setVerifyResult({ success: true, message: `✅ Certificate verified and accepted for "${course.title}". Completion recorded.` })
+      setVerifyResult({ success: true, message: `✅ ${result.message}` })
       onVerify(course.id)
     } else {
-      let message = ''
-      if (result.reason === 'invalid_type') {
-        message = `❌ Wrong file type. Only JPG, PNG, or PDF certificates are accepted.`
-      } else if (result.reason === 'too_small') {
-        message = `❌ File too small (min 5 KB). This doesn't look like a real certificate.`
-      } else if (result.reason === 'too_large') {
-        message = `❌ File too large (max 25 MB).`
-      } else if (result.reason === 'invalid_bytes') {
-        message = `❌ This file is not a real image or PDF. Please upload the actual certificate downloaded from ${course.provider}.`
-      } else if (result.reason === 'no_cert_keyword') {
-        message = `❌ Rejected. Filename must contain "certificate", "completion", or "diploma". Rename your file and try again.`
-      } else {
-        const missing = []
-        if (!result.hasTitleMatch) missing.push(`course name (e.g. "${course.title.split(' ').slice(0,2).join(' ').toLowerCase()}")`)
-        if (!result.hasProviderMatch) missing.push(`provider (e.g. "${course.provider.toLowerCase()}")`)
-        if (!result.hasSkillMatch) missing.push(`skill (e.g. "${course.skill.toLowerCase()}")`)
-        message = `❌ Certificate rejected — filename is missing: ${missing.join(' and ')}.\n\nRename your file to include these keywords.\nExample: "${course.provider.toLowerCase()}_${course.skill.toLowerCase()}_certificate.pdf"`
-      }
-      setVerifyResult({ success: false, message })
+      setVerifyResult({ success: false, message: `❌ ${result.message}` })
     }
+    setVerifyStep('')
     setVerifying(false)
   }
 
@@ -256,16 +281,16 @@ function CourseProgressCard({ course, progress, onVerify }) {
 
           {certFile && !verifyResult && (
             <button onClick={handleVerify} disabled={verifying}
-              className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all duration-200 ${verifying ? 'bg-slate-200 text-slate-400' : 'bg-green-600 text-white hover:bg-green-700 active:scale-95'}`}>
+              className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all duration-200 ${verifying ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700 active:scale-95'}`}>
               {verifying ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Verifying certificate...
+                  {verifyStep || 'Verifying...'}
                 </span>
-              ) : '🔍 Verify & Mark Complete'}
+              ) : '🔍 Verify Certificate Content'}
             </button>
           )}
 
