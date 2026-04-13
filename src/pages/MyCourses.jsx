@@ -49,34 +49,42 @@ const COURSE_URLS = {
   da4: 'https://www.coursera.org/learn/excel-data-analysis',
 }
 
-// Certificate verification — matches filename against course title, provider, and skill keywords
-function verifyCertificate(file, course) {
+// Strict certificate validation — checks file type, size, magic bytes, and course match
+async function verifyCertificate(file, course) {
   const fname = file.name.toLowerCase().replace(/[-_]/g, ' ')
-  const isValidType = file.type.startsWith('image/') || file.type === 'application/pdf'
-  const isReasonableSize = file.size > 5000 && file.size < 25 * 1024 * 1024
+  const isImage = file.type.startsWith('image/')
+  const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+  const isValidType = isImage || isPDF
 
   if (!isValidType) return { valid: false, reason: 'invalid_type' }
-  if (!isReasonableSize) return { valid: false, reason: 'invalid_size' }
+  if (file.size < 5000) return { valid: false, reason: 'too_small' }
+  if (file.size > 25 * 1024 * 1024) return { valid: false, reason: 'too_large' }
 
-  // Build keyword list from course title, provider, skill
+  // Check magic bytes for images and PDFs
+  try {
+    const buf = await file.slice(0, 8).arrayBuffer()
+    const b = new Uint8Array(buf)
+    const isPDFBytes = b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46
+    const isJPG = b[0] === 0xFF && b[1] === 0xD8
+    const isPNG = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47
+    const isValidBytes = isPDFBytes || isJPG || isPNG
+    if (!isValidBytes) return { valid: false, reason: 'invalid_bytes' }
+  } catch { /* skip if can't read */ }
+
+  // Course keyword matching
   const titleWords = course.title.toLowerCase().split(' ').filter(w => w.length > 3)
   const providerWords = course.provider.toLowerCase().split(' ').filter(w => w.length > 3)
   const skillWords = course.skill.toLowerCase().split(' ').filter(w => w.length > 2)
-
-  // Generic certificate keywords
   const certKeywords = ['cert', 'certificate', 'completion', 'diploma', 'badge', 'credential', 'achievement']
 
   const hasCertKeyword = certKeywords.some(k => fname.includes(k))
   const hasTitleMatch = titleWords.some(w => fname.includes(w))
   const hasProviderMatch = providerWords.some(w => fname.includes(w))
   const hasSkillMatch = skillWords.some(w => fname.includes(w))
-
   const matchScore = (hasCertKeyword ? 2 : 0) + (hasTitleMatch ? 3 : 0) + (hasProviderMatch ? 2 : 0) + (hasSkillMatch ? 2 : 0)
 
   if (matchScore >= 3) return { valid: true, matchScore, hasTitleMatch, hasProviderMatch, hasSkillMatch, hasCertKeyword }
-  // Accept if it's a valid file type/size with at least a cert keyword
   if (hasCertKeyword && isValidType) return { valid: true, matchScore, weak: true }
-  // Reject if no course-related keywords found at all
   return { valid: false, reason: 'no_match', matchScore }
 }
 
@@ -118,38 +126,34 @@ function CourseProgressCard({ course, progress, onVerify }) {
     }
   }
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (!certFile) return
     setVerifying(true)
     setVerifyResult(null)
-    setTimeout(() => {
-      const result = verifyCertificate(certFile, course)
-      if (result.valid) {
-        let message = ''
-        if (result.hasTitleMatch && result.hasProviderMatch) {
-          message = `✅ Strong match! Certificate filename matches "${course.title}" from ${course.provider}. Completion recorded.`
-        } else if (result.hasTitleMatch || result.hasSkillMatch) {
-          message = `✅ Certificate verified — course content matches "${course.skill}" skill. Completion recorded.`
-        } else if (result.hasProviderMatch) {
-          message = `✅ Certificate from ${course.provider} accepted. Completion recorded.`
-        } else if (result.weak) {
-          message = `✅ Certificate document accepted. Completion recorded.`
-        }
-        setVerifyResult({ success: true, message })
-        onVerify(course.id)
+    const result = await verifyCertificate(certFile, course)
+    if (result.valid) {
+      let message = ''
+      if (result.hasTitleMatch && result.hasProviderMatch) {
+        message = `Certificate matches "${course.title}" from ${course.provider}. Completion recorded.`
+      } else if (result.hasTitleMatch || result.hasSkillMatch) {
+        message = `Certificate verified — matches "${course.skill}" skill. Completion recorded.`
+      } else if (result.hasProviderMatch) {
+        message = `Certificate from ${course.provider} accepted. Completion recorded.`
       } else {
-        let message = ''
-        if (result.reason === 'invalid_type') {
-          message = `❌ Invalid file type. Please upload a JPG, PNG, or PDF certificate.`
-        } else if (result.reason === 'invalid_size') {
-          message = `❌ File size is invalid. Certificate must be between 5 KB and 25 MB.`
-        } else {
-          message = `❌ Certificate does not match this course. The filename should contain keywords related to "${course.title}" or "${course.provider}" or "${course.skill}". Please upload the correct certificate.`
-        }
-        setVerifyResult({ success: false, message })
+        message = `Certificate document accepted. Completion recorded.`
       }
-      setVerifying(false)
-    }, 1800)
+      setVerifyResult({ success: true, message })
+      onVerify(course.id)
+    } else {
+      const message =
+        result.reason === 'invalid_type' ? `Invalid file. Only JPG, PNG, or PDF certificates are accepted.` :
+        result.reason === 'too_small' ? `File is too small to be a real certificate (min 5 KB).` :
+        result.reason === 'too_large' ? `File is too large (max 25 MB).` :
+        result.reason === 'invalid_bytes' ? `File does not appear to be a real image or PDF. Please upload the actual certificate file.` :
+        `Certificate doesn't match this course. Filename should contain keywords like: "${course.provider.toLowerCase()}", "${course.skill.toLowerCase()}", or "certificate".`
+      setVerifyResult({ success: false, message })
+    }
+    setVerifying(false)
   }
 
   return (

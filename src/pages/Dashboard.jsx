@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
-import { RadialBarChart, RadialBar, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell } from 'recharts'
 
 function ScoreRing({ score }) {
   const [animated, setAnimated] = useState(0)
@@ -39,7 +39,7 @@ function ScoreRing({ score }) {
 }
 
 export default function Dashboard() {
-  const { analysisResult, enrolledCourses, courseProgress } = useApp()
+  const { analysisResult, enrolledCourses, courseProgress, analysisHistory } = useApp()
 
   if (!analysisResult) {
     return (
@@ -250,6 +250,42 @@ export default function Dashboard() {
             <p className="text-slate-500 text-sm mt-1">Track your progress</p>
           </Link>
         </div>
+
+        {/* Past Analysis History */}
+        {analysisHistory && analysisHistory.length > 1 && (
+          <div className="card mt-6">
+            <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+              🕐 Past Analysis Records
+              <span className="badge bg-slate-100 text-slate-600">{analysisHistory.length}</span>
+            </h3>
+            <div className="space-y-2">
+              {analysisHistory.map((record, i) => {
+                const scoreColor = record.score >= 75 ? 'text-green-600' : record.score >= 50 ? 'text-yellow-600' : 'text-red-500'
+                const bgColor = record.score >= 75 ? 'bg-green-50 border-green-100' : record.score >= 50 ? 'bg-yellow-50 border-yellow-100' : 'bg-red-50 border-red-100'
+                return (
+                  <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${bgColor} transition-all`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-extrabold text-sm ${bgColor} border ${scoreColor}`}>
+                        {record.score}%
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-800 text-sm">{record.jobRole}</p>
+                        <p className="text-xs text-slate-400">
+                          {record.analyzedAt ? new Date(record.analyzedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                          {' · '}{record.eligibility} eligibility
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-bold text-sm ${scoreColor}`}>{record.score}%</p>
+                      <p className="text-xs text-slate-400">{record.foundRequired?.length || 0} skills matched</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

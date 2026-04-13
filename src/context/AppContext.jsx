@@ -18,6 +18,7 @@ export const AppProvider = ({ children }) => {
 
   const [profile, setProfileState] = useState(EMPTY_PROFILE)
   const [analysisResult, setAnalysisResultState] = useState(null)
+  const [analysisHistory, setAnalysisHistoryState] = useState([])
   const [enrolledCourses, setEnrolledCoursesState] = useState([])
   const [courseProgress, setCourseProgressState] = useState({})
 
@@ -60,6 +61,7 @@ export const AppProvider = ({ children }) => {
       if (data && !error) {
         setProfileState(data.profile || EMPTY_PROFILE)
         setAnalysisResultState(data.analysis_result || null)
+        setAnalysisHistoryState(data.analysis_history || [])
         setEnrolledCoursesState(data.enrolled_courses || [])
         setCourseProgressState(data.course_progress || {})
       }
@@ -71,6 +73,7 @@ export const AppProvider = ({ children }) => {
   const resetLocalState = () => {
     setProfileState(EMPTY_PROFILE)
     setAnalysisResultState(null)
+    setAnalysisHistoryState([])
     setEnrolledCoursesState([])
     setCourseProgressState({})
   }
@@ -125,6 +128,11 @@ export const AppProvider = ({ children }) => {
   const setAnalysisResult = async (data) => {
     setAnalysisResultState(data)
     await saveField('analysis_result', data)
+    // Append to history
+    const record = { ...data, analyzedAt: new Date().toISOString() }
+    const newHistory = [record, ...analysisHistory].slice(0, 10) // keep last 10
+    setAnalysisHistoryState(newHistory)
+    await saveField('analysis_history', newHistory)
   }
 
   const enrollCourse = async (course) => {
@@ -149,6 +157,7 @@ export const AppProvider = ({ children }) => {
       registerUser, loginUser, logout,
       profile, setProfile,
       analysisResult, setAnalysisResult,
+      analysisHistory,
       enrolledCourses, courseProgress,
       enrollCourse, updateProgress,
     }}>

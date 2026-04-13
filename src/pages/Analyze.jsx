@@ -151,15 +151,39 @@ export default function Analyze() {
     }, 150)
   }
 
-  const handleFile = (f) => {
-    if (f && (f.type === 'application/pdf' || f.name.endsWith('.pdf'))) {
-      setFile(f); setError(''); setStep(s => Math.max(s, 2))
-    } else {
-      setError('Please upload a PDF file')
-    }
+  // Strict PDF validation — checks magic bytes (first 4 bytes must be %PDF)
+  const validatePDF = async (f) => {
+    if (!f) return { valid: false, reason: 'No file selected' }
+    // Must have pdf extension
+    if (!f.name.toLowerCase().endsWith('.pdf')) return { valid: false, reason: 'File must have a .pdf extension' }
+    // Must have correct MIME type
+    if (f.type && f.type !== 'application/pdf' && f.type !== '') return { valid: false, reason: 'File type is not PDF' }
+    // Must be reasonable size (10KB – 10MB)
+    if (f.size < 10000) return { valid: false, reason: 'File is too small to be a valid resume (min 10 KB)' }
+    if (f.size > 10 * 1024 * 1024) return { valid: false, reason: 'File is too large (max 10 MB)' }
+    // Check magic bytes — real PDFs start with %PDF (hex: 25 50 44 46)
+    try {
+      const slice = f.slice(0, 4)
+      const buf = await slice.arrayBuffer()
+      const bytes = new Uint8Array(buf)
+      const isPDF = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
+      if (!isPDF) return { valid: false, reason: 'File does not appear to be a real PDF document' }
+    } catch { /* if we can't read bytes, fall through */ }
+    return { valid: true }
   }
 
-  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]) }
+  const handleFile = async (f) => {
+    if (!f) return
+    const check = await validatePDF(f)
+    if (!check.valid) {
+      setError(`❌ ${check.reason}. Please upload your actual resume as a PDF file.`)
+      setFile(null)
+      return
+    }
+    setFile(f); setError(''); setStep(s => Math.max(s, 2))
+  }
+
+  const handleDrop = async (e) => { e.preventDefault(); setDragOver(false); await handleFile(e.dataTransfer.files[0]) }
 
   const handleAnalyze = async () => {
     if (!file) { setError('Please upload your resume'); return }
@@ -218,7 +242,7 @@ export default function Analyze() {
             onDrop={handleDrop}
             onClick={() => fileRef.current.click()}
           >
-            <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={e => handleFile(e.target.files[0])} />
+            <input ref={fileRef} type="file" accept=".pdf,application/pdf" className="hidden" onChange={e => handleFile(e.target.files[0])} />
             {file ? (
               <div className="animate-fade-in">
                 <div className="text-5xl mb-3">✅</div>
