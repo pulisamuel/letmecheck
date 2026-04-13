@@ -193,8 +193,24 @@ export default function Analyze() {
     setLoading(true); setError('')
     try {
       const text = await extractTextFromPDF(file)
-      const analysisText = text.length > 50 ? text : `resume ${file.name} ${resolvedRole}`
-      const result = analyzeResume(analysisText, resolvedRole)
+
+      // Reject if PDF has no readable text (image-only PDF, blank, or non-resume)
+      if (!text || text.trim().length < 100) {
+        setError('❌ Could not read text from this PDF. Make sure your resume is a text-based PDF (not a scanned image). Try copy-pasting text from it to verify.')
+        setLoading(false)
+        return
+      }
+
+      // Reject if content doesn't look like a resume at all
+      const resumeKeywords = ['experience', 'education', 'skills', 'project', 'work', 'university', 'college', 'degree', 'internship', 'certification', 'objective', 'summary', 'profile', 'employment', 'academic']
+      const hasResumeContent = resumeKeywords.some(kw => text.toLowerCase().includes(kw))
+      if (!hasResumeContent) {
+        setError('❌ This PDF does not appear to be a resume. Please upload your actual resume/CV.')
+        setLoading(false)
+        return
+      }
+
+      const result = analyzeResume(text, resolvedRole)
       setAnalysisResult(result)
       navigate('/dashboard')
     } catch {
