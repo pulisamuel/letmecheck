@@ -194,18 +194,30 @@ export default function Analyze() {
     try {
       const text = await extractTextFromPDF(file)
 
-      // Reject if PDF has no readable text (image-only PDF, blank, or non-resume)
+      // Reject if PDF has no readable text
       if (!text || text.trim().length < 100) {
-        setError('❌ Could not read text from this PDF. Make sure your resume is a text-based PDF (not a scanned image). Try copy-pasting text from it to verify.')
+        setError('❌ Could not read text from this PDF. Your resume must be a text-based PDF, not a scanned image.')
         setLoading(false)
         return
       }
 
-      // Reject if content doesn't look like a resume at all
-      const resumeKeywords = ['experience', 'education', 'skills', 'project', 'work', 'university', 'college', 'degree', 'internship', 'certification', 'objective', 'summary', 'profile', 'employment', 'academic']
-      const hasResumeContent = resumeKeywords.some(kw => text.toLowerCase().includes(kw))
-      if (!hasResumeContent) {
-        setError('❌ This PDF does not appear to be a resume. Please upload your actual resume/CV.')
+      const lower = text.toLowerCase()
+
+      // Must match ALL core resume sections — name, contact, education, experience, skills
+      const REQUIRED_GROUPS = [
+        { name: 'Contact Info',  keywords: ['email', 'phone', 'mobile', 'contact', 'gmail', 'linkedin', '@'] },
+        { name: 'Education',     keywords: ['education', 'university', 'college', 'degree', 'b.tech', 'b.e', 'bsc', 'msc', 'mba', 'bachelor', 'master', 'school', 'academic', 'graduation'] },
+        { name: 'Skills',        keywords: ['skills', 'technologies', 'tools', 'languages', 'frameworks', 'proficient', 'expertise', 'technical'] },
+        { name: 'Experience/Projects', keywords: ['experience', 'project', 'internship', 'work', 'employment', 'developed', 'built', 'implemented', 'designed', 'worked'] },
+      ]
+
+      const missingGroups = REQUIRED_GROUPS.filter(
+        group => !group.keywords.some(kw => lower.includes(kw))
+      )
+
+      if (missingGroups.length > 0) {
+        const missing = missingGroups.map(g => g.name).join(', ')
+        setError(`❌ This does not look like a valid resume. Missing sections: ${missing}. Please upload your actual resume/CV.`)
         setLoading(false)
         return
       }

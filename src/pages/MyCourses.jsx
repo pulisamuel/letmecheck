@@ -49,44 +49,46 @@ const COURSE_URLS = {
   da4: 'https://www.coursera.org/learn/excel-data-analysis',
 }
 
-// Strict certificate validation — magic bytes + course match
+// Strict certificate validation — magic bytes + ALL course keywords must match
 async function verifyCertificate(file, course) {
-  const fname = file.name.toLowerCase().replace(/[-_]/g, ' ')
+  const fname = file.name.toLowerCase().replace(/[-_.\s]/g, ' ')
   const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.name)
   const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
 
   if (!isImage && !isPDF) return { valid: false, reason: 'invalid_type' }
-  if (file.size < 5000) return { valid: false, reason: 'too_small' }
+  if (file.size < 5000)              return { valid: false, reason: 'too_small' }
   if (file.size > 25 * 1024 * 1024) return { valid: false, reason: 'too_large' }
 
-  // Check magic bytes — must be a real image or PDF
+  // Check magic bytes — must be a real image or PDF, not a renamed file
   try {
     const buf = await file.slice(0, 8).arrayBuffer()
     const b = new Uint8Array(buf)
-    const isPDFBytes  = b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46 // %PDF
-    const isJPGBytes  = b[0] === 0xFF && b[1] === 0xD8                                     // JPEG
-    const isPNGBytes  = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47  // PNG
-    const isWEBPBytes = b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46  // RIFF (WebP)
+    const isPDFBytes  = b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46
+    const isJPGBytes  = b[0] === 0xFF && b[1] === 0xD8
+    const isPNGBytes  = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47
+    const isWEBPBytes = b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46
     if (!isPDFBytes && !isJPGBytes && !isPNGBytes && !isWEBPBytes) {
       return { valid: false, reason: 'invalid_bytes' }
     }
   } catch { /* skip if can't read */ }
 
-  // Course keyword matching against filename
-  const titleWords = course.title.toLowerCase().split(' ').filter(w => w.length > 3)
-  const providerWords = course.provider.toLowerCase().split(' ').filter(w => w.length > 3)
-  const skillWords = course.skill.toLowerCase().split(' ').filter(w => w.length > 2)
-  const certKeywords = ['cert', 'certificate', 'completion', 'diploma', 'badge', 'credential']
+  // Build keyword groups — ALL must match in the filename
+  const certKeywords   = ['cert', 'certificate', 'completion', 'diploma', 'badge', 'credential']
+  const titleWords     = course.title.toLowerCase().split(' ').filter(w => w.length > 3)
+  const providerWords  = course.provider.toLowerCase().split(' ').filter(w => w.length > 3)
+  const skillWords     = course.skill.toLowerCase().split(' ').filter(w => w.length > 2)
 
-  const hasCertKeyword  = certKeywords.some(k => fname.includes(k))
-  const hasTitleMatch   = titleWords.some(w => fname.includes(w))
+  const hasCertKeyword   = certKeywords.some(k => fname.includes(k))
+  const hasTitleMatch    = titleWords.some(w => fname.includes(w))
   const hasProviderMatch = providerWords.some(w => fname.includes(w))
-  const hasSkillMatch   = skillWords.some(w => fname.includes(w))
-  const matchScore = (hasCertKeyword ? 2 : 0) + (hasTitleMatch ? 3 : 0) + (hasProviderMatch ? 2 : 0) + (hasSkillMatch ? 2 : 0)
+  const hasSkillMatch    = skillWords.some(w => fname.includes(w))
 
-  // Must have at least a cert keyword OR a course-related keyword to pass
-  if (matchScore >= 2) return { valid: true, matchScore, hasTitleMatch, hasProviderMatch, hasSkillMatch, hasCertKeyword }
-  return { valid: false, reason: 'no_match', matchScore }
+  // Strict: must have cert keyword + at least 2 of (title, provider, skill)
+  const courseMatches = [hasTitleMatch, hasProviderMatch, hasSkillMatch].filter(Boolean).length
+  if (!hasCertKeyword) return { valid: false, reason: 'no_cert_keyword' }
+  if (courseMatches < 2) return { valid: false, reason: 'no_match', hasTitleMatch, hasProviderMatch, hasSkillMatch }
+
+  return { valid: true, hasTitleMatch, hasProviderMatch, hasSkillMatch, hasCertKeyword }
 }
 
 function CourseProgressCard({ course, progress, onVerify }) {
@@ -133,25 +135,27 @@ function CourseProgressCard({ course, progress, onVerify }) {
     setVerifyResult(null)
     const result = await verifyCertificate(certFile, course)
     if (result.valid) {
-      let message = ''
-      if (result.hasTitleMatch && result.hasProviderMatch) {
-        message = `Certificate matches "${course.title}" from ${course.provider}. Completion recorded.`
-      } else if (result.hasTitleMatch || result.hasSkillMatch) {
-        message = `Certificate verified — matches "${course.skill}" skill. Completion recorded.`
-      } else if (result.hasProviderMatch) {
-        message = `Certificate from ${course.provider} accepted. Completion recorded.`
-      } else {
-        message = `Certificate document accepted. Completion recorded.`
-      }
-      setVerifyResult({ success: true, message })
+      setVerifyResult({ success: true, message: `✅ Certificate verified and accepted for "${course.title}". Completion recorded.` })
       onVerify(course.id)
     } else {
-    const message =
-        result.reason === 'invalid_type'  ? `Only JPG, PNG, or PDF files are accepted. You uploaded a different file type.` :
-        result.reason === 'too_small'     ? `File is too small (min 5 KB). This doesn't look like a real certificate.` :
-        result.reason === 'too_large'     ? `File is too large (max 25 MB).` :
-        result.reason === 'invalid_bytes' ? `This file is not a real image or PDF. Please upload the actual certificate downloaded from ${course.provider}.` :
-        `Certificate doesn't match this course. Rename your file to include words like "${course.provider.toLowerCase()}", "${course.skill.toLowerCase()}", or "certificate" and try again.`
+      let message = ''
+      if (result.reason === 'invalid_type') {
+        message = `❌ Wrong file type. Only JPG, PNG, or PDF certificates are accepted.`
+      } else if (result.reason === 'too_small') {
+        message = `❌ File too small (min 5 KB). This doesn't look like a real certificate.`
+      } else if (result.reason === 'too_large') {
+        message = `❌ File too large (max 25 MB).`
+      } else if (result.reason === 'invalid_bytes') {
+        message = `❌ This file is not a real image or PDF. Please upload the actual certificate downloaded from ${course.provider}.`
+      } else if (result.reason === 'no_cert_keyword') {
+        message = `❌ Rejected. Filename must contain "certificate", "completion", or "diploma". Rename your file and try again.`
+      } else {
+        const missing = []
+        if (!result.hasTitleMatch) missing.push(`course name (e.g. "${course.title.split(' ').slice(0,2).join(' ').toLowerCase()}")`)
+        if (!result.hasProviderMatch) missing.push(`provider (e.g. "${course.provider.toLowerCase()}")`)
+        if (!result.hasSkillMatch) missing.push(`skill (e.g. "${course.skill.toLowerCase()}")`)
+        message = `❌ Certificate rejected — filename is missing: ${missing.join(' and ')}.\n\nRename your file to include these keywords.\nExample: "${course.provider.toLowerCase()}_${course.skill.toLowerCase()}_certificate.pdf"`
+      }
       setVerifyResult({ success: false, message })
     }
     setVerifying(false)
