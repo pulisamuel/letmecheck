@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
-import { extractTextFromPDF, analyzeResume, JOB_ROLES } from '../utils/resumeAnalyzer'
+import { JOB_ROLES } from '../utils/resumeAnalyzer'
+import { processResumeFile } from '../utils/pdfUploader'
+import { analyzeResumeViaAPI, saveAnalysisResult } from '../utils/analysisApi'
 
 const ALL_ROLES = Object.keys(JOB_ROLES)
 
@@ -102,6 +104,7 @@ export default function Analyze() {
   const [roleValidation, setRoleValidation] = useState(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingStep, setLoadingStep] = useState('')
   const [error, setError] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [step, setStep] = useState(1)
@@ -151,32 +154,13 @@ export default function Analyze() {
     }, 150)
   }
 
-  // Strict PDF validation — checks magic bytes (first 4 bytes must be %PDF)
-  const validatePDF = async (f) => {
-    if (!f) return { valid: false, reason: 'No file selected' }
-    // Must have pdf extension
-    if (!f.name.toLowerCase().endsWith('.pdf')) return { valid: false, reason: 'File must have a .pdf extension' }
-    // Must have correct MIME type
-    if (f.type && f.type !== 'application/pdf' && f.type !== '') return { valid: false, reason: 'File type is not PDF' }
-    // Must be reasonable size (10KB – 10MB)
-    if (f.size < 10000) return { valid: false, reason: 'File is too small to be a valid resume (min 10 KB)' }
-    if (f.size > 10 * 1024 * 1024) return { valid: false, reason: 'File is too large (max 10 MB)' }
-    // Check magic bytes — real PDFs start with %PDF (hex: 25 50 44 46)
-    try {
-      const slice = f.slice(0, 4)
-      const buf = await slice.arrayBuffer()
-      const bytes = new Uint8Array(buf)
-      const isPDF = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
-      if (!isPDF) return { valid: false, reason: 'File does not appear to be a real PDF document' }
-    } catch { /* if we can't read bytes, fall through */ }
-    return { valid: true }
-  }
-
+  // Strict PDF validation — delegates to pdfUploader utility
   const handleFile = async (f) => {
     if (!f) return
-    const check = await validatePDF(f)
+    const { validatePDFFile } = await import('../utils/pdfUploader')
+    const check = await validatePDFFile(f)
     if (!check.valid) {
-      setError(`❌ ${check.reason}. Please upload your actual resume as a PDF file.`)
+      setError(`❌ ${check.error}`)
       setFile(null)
       return
     }
@@ -190,45 +174,32 @@ export default function Analyze() {
     const validation = validateJobRole(roleInput)
     if (!validation.valid) { setError(validation.message); return }
     const resolvedRole = validation.matched
-    setLoading(true); setError('')
+
+    setLoading(true); setError(''); setLoadingStep('Reading PDF...')
     try {
-      const text = await extractTextFromPDF(file)
-
-      // Reject if PDF has no readable text
-      if (!text || text.trim().length < 100) {
-        setError('❌ Could not read text from this PDF. Your resume must be a text-based PDF, not a scanned image.')
-        setLoading(false)
+      // Step 1 — extract + validate via pdfUploader
+      const { processResumeFile } = await import('../utils/pdfUploader')
+      const processed = await processResumeFile(file)
+      if (!processed.success) {
+        setError(`❌ ${processed.error}`)
         return
       }
 
-      const lower = text.toLowerCase()
+      // Step 2 — send to API (Edge Function with client-side fallback)
+      setLoadingStep('Analyzing resume...')
+      const { analyzeResumeViaAPI, saveAnalysisResult } = await import('../utils/analysisApi')
+      const { result } = await analyzeResumeViaAPI(processed.text, resolvedRole)
 
-      // Must match ALL core resume sections — name, contact, education, experience, skills
-      const REQUIRED_GROUPS = [
-        { name: 'Contact Info',  keywords: ['email', 'phone', 'mobile', 'contact', 'gmail', 'linkedin', '@'] },
-        { name: 'Education',     keywords: ['education', 'university', 'college', 'degree', 'b.tech', 'b.e', 'bsc', 'msc', 'mba', 'bachelor', 'master', 'school', 'academic', 'graduation'] },
-        { name: 'Skills',        keywords: ['skills', 'technologies', 'tools', 'languages', 'frameworks', 'proficient', 'expertise', 'technical'] },
-        { name: 'Experience/Projects', keywords: ['experience', 'project', 'internship', 'work', 'employment', 'developed', 'built', 'implemented', 'designed', 'worked'] },
-      ]
+      // Step 3 — save to Supabase + update context
+      setLoadingStep('Saving results...')
+      await setAnalysisResult(result)
 
-      const missingGroups = REQUIRED_GROUPS.filter(
-        group => !group.keywords.some(kw => lower.includes(kw))
-      )
-
-      if (missingGroups.length > 0) {
-        const missing = missingGroups.map(g => g.name).join(', ')
-        setError(`❌ This does not look like a valid resume. Missing sections: ${missing}. Please upload your actual resume/CV.`)
-        setLoading(false)
-        return
-      }
-
-      const result = analyzeResume(text, resolvedRole)
-      setAnalysisResult(result)
       navigate('/dashboard')
-    } catch {
-      setError('Failed to analyze resume. Please try again.')
+    } catch (err) {
+      setError(err.message || 'Failed to analyze resume. Please try again.')
     } finally {
       setLoading(false)
+      setLoadingStep('')
     }
   }
 
@@ -387,7 +358,7 @@ export default function Analyze() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Analyzing your resume...
+              {loadingStep || 'Analyzing...'}
             </span>
           ) : '🎯 Analyze & Get My Score'}
         </button>
