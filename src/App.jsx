@@ -11,6 +11,7 @@ import Courses from './pages/Courses'
 import MyCourses from './pages/MyCourses'
 import Interview from './pages/Interview'
 import Profile from './pages/Profile'
+import ResumeAnalyzer from './pages/ResumeAnalyzer'
 
 function AppShell() {
   const { isAuthenticated, authLoading } = useApp()
@@ -44,6 +45,7 @@ function AppShell() {
           <Route path="/my-courses" element={<MyCourses />} />
           <Route path="/interview" element={<Interview />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
         </Routes>
       </main>
     </div>

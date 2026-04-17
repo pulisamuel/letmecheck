@@ -25,26 +25,29 @@ export const AppProvider = ({ children }) => {
 
   // ── Listen to Supabase auth state ──────────────────────────────────────────
   useEffect(() => {
-    // Check existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setSupabaseUser(session.user)
-        setIsAuthenticated(true)
-        loadUserData(session.user.id)
-      }
-      setAuthLoading(false)
-    })
+    let initialSessionHandled = false
 
     // Listen for auth changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // onAuthStateChange fires immediately with the current session, so we use
+    // it as the single source of truth and skip the separate getSession call.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setSupabaseUser(session.user)
         setIsAuthenticated(true)
-        loadUserData(session.user.id)
+        // Load user data on initial session check and explicit sign-in, but not on
+        // every token refresh (TOKEN_REFRESHED) to avoid redundant DB reads
+        if (!initialSessionHandled || event === 'SIGNED_IN') {
+          loadUserData(session.user.id)
+        }
       } else {
         setSupabaseUser(null)
         setIsAuthenticated(false)
         resetLocalState()
+      }
+      // Always clear the auth loading state once we have a definitive answer
+      if (!initialSessionHandled) {
+        initialSessionHandled = true
+        setAuthLoading(false)
       }
     })
 
