@@ -47,6 +47,21 @@ export default function SkillsGap() {
   const { jobRole, foundRequired, missingRequired, foundNiceToHave, missingNiceToHave, score } = analysisResult
   const roleData = JOB_ROLES[jobRole]
 
+  // Bug #2 fix — guard against custom/unsupported roles
+  if (!roleData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <div className="text-center max-w-md animate-fade-in">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-extrabold text-slate-800 mb-2">Role Not Supported</h2>
+          <p className="text-slate-500 mb-2">"{jobRole}" doesn't have a detailed skills map.</p>
+          <p className="text-slate-400 text-sm mb-6">Please re-analyze with one of the 20 supported roles to see your skills gap.</p>
+          <Link to="/analyze" className="btn-primary">Re-analyze with Supported Role →</Link>
+        </div>
+      </div>
+    )
+  }
+
   const allRequired = [
     ...foundRequired.map(s => ({ skill: s, found: true })),
     ...missingRequired.map(s => ({ skill: s, found: false })),

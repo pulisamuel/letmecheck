@@ -2,19 +2,27 @@ import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { Link } from 'react-router-dom'
 
-const yearOptions = ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Post Graduate']
+const yearOptions = ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Graduate', 'Post Graduate']
 const goalOptions = [
   'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
   'Data Scientist', 'Data Analyst', 'DevOps Engineer',
-  'UI/UX Designer', 'Machine Learning Engineer', 'Cybersecurity Analyst', 'Product Manager'
+  'UI/UX Designer', 'Machine Learning Engineer', 'Cybersecurity Analyst', 'Product Manager',
+  'Cloud Engineer', 'Mobile Developer', 'QA Engineer', 'Blockchain Developer',
+  'Site Reliability Engineer', 'Database Administrator', 'Business Analyst',
+  'Technical Writer', 'Solutions Architect', 'AI Engineer',
 ]
-const graduationOptions = [ '2026', '2027', '2028', '2029', '2030']
+const graduationOptions = ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
 
 export default function Profile() {
   const { profile, setProfile, analysisResult, enrolledCourses, courseProgress } = useApp()
   const [form, setForm] = useState({ ...profile })
   const [saved, setSaved] = useState(false)
   const [activeTab, setActiveTab] = useState('profile')
+
+  // Bug #1 fix — sync form when profile loads from Supabase
+  React.useEffect(() => {
+    setForm({ ...profile })
+  }, [profile])
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))

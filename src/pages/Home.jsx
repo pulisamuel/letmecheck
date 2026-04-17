@@ -40,8 +40,7 @@ export default function Home() {
             </h1>
             <p className="text-xl text-blue-100 mb-8 max-w-2xl">
               Upload your resume, get an instant ATS score, discover skill gaps, and access curated courses — all in one place designed for students like you.
-            </p>
-            <div className="flex flex-wrap gap-4">
+            </p>            <div className="flex flex-wrap gap-4">
               <Link to="/analyze" className="bg-white text-primary-700 font-bold px-8 py-4 rounded-xl hover:bg-blue-50 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95">
                 🚀 Analyze My Resume
               </Link>
@@ -54,8 +53,8 @@ export default function Home() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-6 mt-16">
             {[
-              { num: '10+', label: 'Job Roles Analyzed' },
-              { num: '50+', label: 'Curated Courses' },
+              { num: '20+', label: 'Job Roles Supported' },
+              { num: '60+', label: 'Curated Courses' },
               { num: '100%', label: 'Free to Use' },
             ].map((stat) => (
               <div key={stat.label} className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">

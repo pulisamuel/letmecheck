@@ -14,6 +14,7 @@ const EMPTY_PROFILE = { name: '', email: '', college: '', year: '', graduation: 
 export const AppProvider = ({ children }) => {
   const [supabaseUser, setSupabaseUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [dataLoading, setDataLoading] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const [profile, setProfileState] = useState(EMPTY_PROFILE)
@@ -51,6 +52,7 @@ export const AppProvider = ({ children }) => {
   }, [])
 
   const loadUserData = async (uid) => {
+    setDataLoading(true)
     try {
       const { data, error } = await supabase
         .from('users')
@@ -58,15 +60,21 @@ export const AppProvider = ({ children }) => {
         .eq('id', uid)
         .single()
 
-      if (data && !error) {
+      if (error) {
+        console.error('Error loading user data:', error.message)
+        return
+      }
+      if (data) {
         setProfileState(data.profile || EMPTY_PROFILE)
         setAnalysisResultState(data.analysis_result || null)
-        setAnalysisHistoryState(data.analysis_history || [])
-        setEnrolledCoursesState(data.enrolled_courses || [])
+        setAnalysisHistoryState(Array.isArray(data.analysis_history) ? data.analysis_history : [])
+        setEnrolledCoursesState(Array.isArray(data.enrolled_courses) ? data.enrolled_courses : [])
         setCourseProgressState(data.course_progress || {})
       }
     } catch (err) {
       console.error('Error loading user data:', err)
+    } finally {
+      setDataLoading(false)
     }
   }
 
@@ -153,7 +161,7 @@ export const AppProvider = ({ children }) => {
 
   return (
     <AppContext.Provider value={{
-      supabaseUser, authLoading, isAuthenticated,
+      supabaseUser, authLoading, dataLoading, isAuthenticated,
       registerUser, loginUser, logout,
       profile, setProfile,
       analysisResult, setAnalysisResult,
