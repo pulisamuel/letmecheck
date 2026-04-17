@@ -91,15 +91,15 @@ export default function Dashboard() {
         </div>
 
         {/* Top Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger-children">
           {[
             { label: 'ATS Score', value: `${score}%`, icon: '🎯', color: 'from-blue-500 to-blue-600' },
             { label: 'Eligibility', value: eligibility, icon: '✅', color: 'from-purple-500 to-purple-600' },
             { label: 'Skills Found', value: `${foundRequired.length}/${foundRequired.length + missingRequired.length}`, icon: '💡', color: 'from-green-500 to-green-600' },
             { label: 'Courses Enrolled', value: enrolledCourses.length, icon: '📚', color: 'from-orange-500 to-orange-600' },
           ].map((stat) => (
-            <div key={stat.label} className="card">
-              <div className={`w-10 h-10 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center text-xl mb-3 shadow-md`}>
+            <div key={stat.label} className="card card-lift">
+              <div className={`w-10 h-10 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center text-xl mb-3 shadow-md transition-transform duration-200 group-hover:scale-110`}>
                 {stat.icon}
               </div>
               <p className="text-2xl font-extrabold text-slate-800">{stat.value}</p>
@@ -207,12 +207,12 @@ export default function Dashboard() {
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
               ✅ Skills You Have
             </h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 stagger-children">
               {foundRequired.map(skill => (
-                <span key={skill} className="badge bg-green-100 text-green-700 border border-green-200">{skill}</span>
+                <span key={skill} className="skill-badge bg-green-100 text-green-700 border border-green-200">{skill}</span>
               ))}
               {foundNiceToHave.slice(0, 5).map(skill => (
-                <span key={skill} className="badge bg-blue-100 text-blue-700 border border-blue-200">{skill}</span>
+                <span key={skill} className="skill-badge bg-blue-100 text-blue-700 border border-blue-200">{skill}</span>
               ))}
               {foundRequired.length === 0 && <p className="text-slate-400 text-sm">No matching skills found in resume</p>}
             </div>
@@ -221,31 +221,31 @@ export default function Dashboard() {
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
               🎯 Skills to Learn
             </h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 stagger-children">
               {missingRequired.map(skill => (
-                <span key={skill} className="badge bg-red-100 text-red-700 border border-red-200">{skill}</span>
+                <span key={skill} className="skill-badge bg-red-100 text-red-700 border border-red-200">{skill}</span>
               ))}
               {missingNiceToHave.slice(0, 4).map(skill => (
-                <span key={skill} className="badge bg-orange-100 text-orange-700 border border-orange-200">{skill}</span>
+                <span key={skill} className="skill-badge bg-orange-100 text-orange-700 border border-orange-200">{skill}</span>
               ))}
             </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link to="/skills" className="card hover:shadow-md hover:-translate-y-1 transition-all duration-200 text-center group">
-            <div className="text-3xl mb-2">🎯</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 stagger-children">
+          <Link to="/skills" className="card card-lift hover:shadow-md transition-all duration-200 text-center group">
+            <div className="text-3xl mb-2 transition-transform duration-200 group-hover:scale-110">🎯</div>
             <p className="font-bold text-slate-800">View Skills Gap</p>
             <p className="text-slate-500 text-sm mt-1">See detailed skill analysis</p>
           </Link>
-          <Link to="/courses" className="card hover:shadow-md hover:-translate-y-1 transition-all duration-200 text-center group">
-            <div className="text-3xl mb-2">📚</div>
+          <Link to="/courses" className="card card-lift hover:shadow-md transition-all duration-200 text-center group">
+            <div className="text-3xl mb-2 transition-transform duration-200 group-hover:scale-110">📚</div>
             <p className="font-bold text-slate-800">Browse Courses</p>
             <p className="text-slate-500 text-sm mt-1">Find courses to fill gaps</p>
           </Link>
-          <Link to="/my-courses" className="card hover:shadow-md hover:-translate-y-1 transition-all duration-200 text-center group">
-            <div className="text-3xl mb-2">🎓</div>
+          <Link to="/my-courses" className="card card-lift hover:shadow-md transition-all duration-200 text-center group">
+            <div className="text-3xl mb-2 transition-transform duration-200 group-hover:scale-110">🎓</div>
             <p className="font-bold text-slate-800">My Learning</p>
             <p className="text-slate-500 text-sm mt-1">Track your progress</p>
           </Link>

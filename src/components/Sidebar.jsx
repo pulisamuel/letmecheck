@@ -76,22 +76,23 @@ export default function Sidebar({ collapsed, onToggle }) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
+        {navItems.map((item, i) => (
           <NavLink
             key={item.path}
             to={item.path}
             end={item.path === '/'}
+            style={{ animationDelay: `${i * 40}ms` }}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 font-medium text-sm group ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 font-medium text-sm group animate-fade-in ${
                 isActive
-                  ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md shadow-primary-200'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-primary-700'
+                  ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md shadow-primary-200 scale-[1.02]'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-primary-700 hover:translate-x-1'
               }`
             }
           >
-            <span className="text-lg flex-shrink-0">{item.icon}</span>
+            <span className="text-lg flex-shrink-0 transition-transform duration-200 group-hover:scale-110">{item.icon}</span>
             {!collapsed && (
-              <span className="truncate animate-fade-in">{item.label}</span>
+              <span className="truncate">{item.label}</span>
             )}
           </NavLink>
         ))}

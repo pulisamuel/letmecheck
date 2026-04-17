@@ -32,9 +32,9 @@ export default function Home() {
 
       {/* Welcome back banner */}
       {profile.name && analysisResult && (
-        <div className="mb-8 w-full max-w-md bg-white/10 border border-white/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-fade-in">
+        <div className="mb-8 w-full max-w-md bg-white/10 border border-white/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-scale-in">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 animate-fade-in">
               {profile.name.charAt(0)}
             </div>
             <div>
@@ -42,22 +42,22 @@ export default function Home() {
               <p className="text-xs text-gray-400">Last score: <span className="text-blue-400 font-bold">{analysisResult.score}%</span> · {analysisResult.jobRole}</p>
             </div>
           </div>
-          <Link to="/dashboard" className="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-lg font-semibold transition flex-shrink-0">
+          <Link to="/dashboard" className="text-xs bg-blue-600 hover:bg-blue-500 active:scale-95 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 flex-shrink-0">
             Dashboard →
           </Link>
         </div>
       )}
 
       {/* Hero */}
-      <h1 className="text-5xl font-extrabold mb-4 text-center">
+      <h1 className="text-5xl font-extrabold mb-4 text-center animate-fade-up">
         LetMeCheck 🚀
       </h1>
-      <p className="text-gray-400 text-center max-w-lg mb-8 leading-relaxed">
+      <p className="text-gray-400 text-center max-w-lg mb-8 leading-relaxed animate-fade-in-delay-1">
         Analyze your resume with AI and boost your ATS score instantly. Discover skill gaps, get curated courses, and land your dream job.
       </p>
 
       {/* Main card */}
-      <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl shadow-xl w-full max-w-md border border-white/10">
+      <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl shadow-xl w-full max-w-md border border-white/10 animate-fade-in-delay-2">
 
         {/* File upload */}
         <div
@@ -126,7 +126,7 @@ export default function Home() {
       </div>
 
       {/* Quick nav */}
-      <div className="flex flex-wrap justify-center gap-3 mt-8">
+      <div className="flex flex-wrap justify-center gap-3 mt-8 stagger-children">
         {[
           { to: '/dashboard', label: '📊 Dashboard' },
           { to: '/skills',    label: '🎯 Skills Gap' },
@@ -137,7 +137,7 @@ export default function Home() {
           <Link
             key={item.to}
             to={item.to}
-            className="text-xs bg-white/10 hover:bg-white/20 border border-white/10 hover:border-white/30 px-4 py-2 rounded-xl font-medium transition-all duration-200"
+            className="text-xs bg-white/10 hover:bg-white/20 border border-white/10 hover:border-white/30 hover:-translate-y-0.5 px-4 py-2 rounded-xl font-medium transition-all duration-200 active:scale-95"
           >
             {item.label}
           </Link>
@@ -145,7 +145,7 @@ export default function Home() {
       </div>
 
       {/* Privacy note */}
-      <p className="text-sm text-gray-500 mt-8 flex items-center gap-1.5">
+      <p className="text-sm text-gray-500 mt-8 flex items-center gap-1.5 animate-fade-in-delay-4">
         <span>🔒</span> Your data is secure and never stored on any server
       </p>
     </div>
