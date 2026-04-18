@@ -182,7 +182,7 @@ export default function Analyze() {
             className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-300
               ${dragOver ? 'border-blue-400 bg-blue-500/10 scale-[1.01]'
               : file ? 'border-green-400/50 bg-green-500/5'
-              : 'border-white/10 hover:border-blue-400/40 hover:bg-white/3'}`}
+              : 'border-white/10 hover:border-blue-400/50 hover:bg-white/5'}`}
             onDragOver={e => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
             onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]) }}
@@ -278,7 +278,7 @@ export default function Analyze() {
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-200 border
                     ${jobRole === role
                       ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-transparent shadow-md'
-                      : 'bg-white/5 text-slate-400 border-white/8 hover:border-blue-400/40 hover:text-white hover:bg-white/8'}`}>
+                      : 'bg-white/5 text-slate-400 border-white/10 hover:border-blue-400/50 hover:text-white hover:bg-white/10'}`}>
                   <span>{ROLE_ICONS[role] || '💼'}</span>
                   {role}
                 </button>
@@ -321,7 +321,7 @@ export default function Analyze() {
             { icon: Zap, label: 'Instant Results', desc: 'Score in seconds' },
             { icon: Target, label: '20 Job Roles', desc: 'Precise per role' },
           ].map(({ icon: Icon, label, desc }) => (
-            <div key={label} className="text-center p-4 bg-white/3 border border-white/5 rounded-xl">
+            <div key={label} className="text-center p-4 bg-white/5 border border-white/5 rounded-xl">
               <Icon className="w-5 h-5 text-blue-400 mx-auto mb-2" />
               <p className="font-semibold text-white text-xs">{label}</p>
               <p className="text-slate-500 text-xs mt-0.5">{desc}</p>

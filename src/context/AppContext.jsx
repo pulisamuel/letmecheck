@@ -63,7 +63,8 @@ export const AppProvider = ({ children }) => {
         .eq('id', uid)
         .single()
 
-      if (error) {
+      // PGRST116 = no rows found — new user whose row wasn't created yet
+      if (error && error.code !== 'PGRST116') {
         console.error('Error loading user data:', error.message)
         return
       }

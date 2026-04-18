@@ -64,7 +64,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
       {/* ── User mini profile ──────────────────────────────────────────────── */}
       {!collapsed && profile.name && (
-        <div className="mx-3 mt-4 p-3 bg-white/5 rounded-xl border border-white/8 animate-fade-in">
+        <div className="mx-3 mt-4 p-3 bg-white/5 rounded-xl border border-white/10 animate-fade-in">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
               {profile.name.charAt(0).toUpperCase()}
