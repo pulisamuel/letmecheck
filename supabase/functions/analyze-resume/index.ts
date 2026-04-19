@@ -10,7 +10,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+// @ts-ignore — Deno URL imports are resolved at runtime by the Edge Runtime, not tsc
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 
 // ── CORS headers ──────────────────────────────────────────────────────────────
 const corsHeaders = {
