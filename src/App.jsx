@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import { AppProvider, useApp } from './context/AppContext'
 import Sidebar from './components/Sidebar'
 import Login from './pages/Login'
@@ -57,6 +58,7 @@ export default function App() {
   return (
     <AppProvider>
       <AppShell />
+      <Analytics />
     </AppProvider>
   )
 }
